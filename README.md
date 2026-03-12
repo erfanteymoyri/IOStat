@@ -1,4 +1,4 @@
-# IOStat — پیش‌بینی بهره‌وری واقعی دستگاه‌های ذخیره‌سازی با یادگیری ماشین
+# IOStat — Predicting Real Storage Device Utilization with Machine Learning
 
 <p align="center">
   <strong>Python · scikit-learn · matplotlib</strong>
@@ -6,71 +6,71 @@
 
 ---
 
-## فهرست مطالب
+## Table of Contents
 
-- [درباره پروژه](#درباره-پروژه)
-- [مشکلی که حل می‌کنیم](#مشکلی-که-حل-میکنیم)
-- [ساختار پروژه](#ساختار-پروژه)
-- [پیش‌نیازها](#پیشنیازها)
-- [نصب و راه‌اندازی](#نصب-و-راهاندازی)
-- [مدل‌های یادگیری ماشین](#مدلهای-یادگیری-ماشین)
-- [نحوه استفاده](#نحوه-استفاده)
-  - [۱. آموزش مدل‌ها](#۱-آموزش-مدلها)
-  - [۲. ارزیابی مدل‌ها](#۲-ارزیابی-مدلها)
-  - [۳. نمودارهای انگیزشی](#۳-نمودارهای-انگیزشی)
-- [تنظیمات پروژه](#تنظیمات-پروژه)
-- [ویژگی‌های ورودی مدل](#ویژگیهای-ورودی-مدل)
-- [خروجی‌ها](#خروجیها)
-- [وابستگی‌ها](#وابستگیها)
+- [About the Project](#about-the-project)
+- [Problem We Solve](#problem-we-solve)
+- [Project Structure](#project-structure)
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
+- [Machine Learning Models](#machine-learning-models)
+- [Usage](#usage)
+  - [1. Training Models](#1-training-models)
+  - [2. Evaluating Models](#2-evaluating-models)
+  - [3. Motivational Charts](#3-motivational-charts)
+- [Project Configuration](#project-configuration)
+- [Model Input Features](#model-input-features)
+- [Outputs](#outputs)
+- [Dependencies](#dependencies)
 
 ---
 
-## درباره پروژه
+## About the Project
 
-**IOStat** یک پروژه یادگیری ماشین مبتنی بر پایتون است که برای **پیش‌بینی حداکثر IOPS دستگاه‌های ذخیره‌سازی** و محاسبه دقیق **بهره‌وری واقعی (Utilization)** طراحی شده است.
+**IOStat** is a Python-based machine learning project designed to **predict the maximum IOPS of storage devices** and accurately calculate **real utilization**.
 
-این پروژه از **۴ مدل رگرسیون** برای پیش‌بینی حداکثر IOPS قابل دستیابی یک دستگاه با توجه به پارامترهای بار کاری استفاده می‌کند. بعد از پیش‌بینی حداکثر IOPS، بهره‌وری واقعی به‌سادگی محاسبه می‌شود:
+This project uses **4 regression models** to predict the maximum achievable IOPS of a device given its workload parameters. After predicting the maximum IOPS, the real utilization is simply calculated as:
 
 ```
-بهره‌وری واقعی = (IOPS فعلی / حداکثر IOPS پیش‌بینی‌شده) × ۱۰۰
+Real Utilization = (Current IOPS / Predicted Maximum IOPS) × 100
 ```
 
 ---
 
-## مشکلی که حل می‌کنیم
+## Problem We Solve
 
-ابزار `iostat` در لینوکس، بهره‌وری دستگاه را بر اساس **یک درخواست I/O همزمان** محاسبه می‌کند. این روش زمانی که چندین درخواست I/O به‌صورت همزمان اجرا می‌شوند، **عدد اشتباه و خیلی کمتر از واقعیت** گزارش می‌دهد.
+The `iostat` tool in Linux calculates device utilization based on **a single concurrent I/O request**. This method reports **incorrect and much lower than actual values** when multiple I/O requests are executed concurrently.
 
-| سناریو | IOPS | بهره‌وری واقعی | گزارش iostat |
-|--------|------|----------------|--------------|
-| تک درخواست — ۵ IOPS | ۵ | ۹٪ | ۹٪ ✅ |
-| تک درخواست — ۲۰ IOPS | ۲۰ | ۳۵٪ | ۳۰٪ ≈ |
-| چند درخواست — ۱۰۰ IOPS | ۱۰۰ | ۱۸٪ | ۸۰٪ ❌ |
-| چند درخواست — ۲۰۰ IOPS | ۲۰۰ | ۳۵٪ | ۹۳٪ ❌ |
+| Scenario | IOPS | Real Utilization | iostat Report |
+|----------|------|------------------|---------------|
+| Single request — 5 IOPS | 5 | 9% | 9% ✅ |
+| Single request — 20 IOPS | 20 | 35% | 30% ≈ |
+| Multiple requests — 100 IOPS | 100 | 18% | 80% ❌ |
+| Multiple requests — 200 IOPS | 200 | 35% | 93% ❌ |
 
-> **توجه:** تفاوت بین سناریوهای تک‌درخواست و چنددرخواست به‌دلیل پیکربندی متفاوت دستگاه‌ها و عمق صف (Queue Depth) است. در سناریوهای چنددرخواست، ظرفیت واقعی دستگاه بسیار بیشتر است ولی `iostat` این را در نظر نمی‌گیرد.
+> **Note:** The difference between single-request and multi-request scenarios is due to different device configurations and queue depth. In multi-request scenarios, the actual device capacity is much higher, but `iostat` does not account for this.
 
-**راه‌حل ما:** با استفاده از مدل‌های یادگیری ماشین، حداکثر IOPS دستگاه را پیش‌بینی کرده و بهره‌وری واقعی را دقیق محاسبه می‌کنیم.
+**Our Solution:** Using machine learning models, we predict the maximum IOPS of the device and accurately calculate the real utilization.
 
 ---
 
-## ساختار پروژه
+## Project Structure
 
 ```
 IOStat/
-├── config.py                    # تنظیمات مرکزی (هایپرپارامترها، رنگ‌ها، فونت‌ها)
-├── utils.py                     # توابع مشترک (بارگذاری داده، مهندسی ویژگی، ساخت مدل)
-├── requirements.txt             # وابستگی‌های پایتون
-├── README.md                    # این فایل
+├── config.py                    # Central configuration (hyperparameters, colors, fonts)
+├── utils.py                     # Shared utilities (data loading, feature engineering, model building)
+├── requirements.txt             # Python dependencies
+├── README.md                    # This file
 │
 └── scripts/
-    ├── motivational/            # اسکریپت‌های نمودار انگیزشی
+    ├── motivational/            # Motivational chart scripts
     │   ├── 01_summarized_bar_chart.py
     │   ├── 02_motivational_curves.py
     │   ├── 03_max_iops_per_device.py
     │   └── 04_iops_and_bandwidth.py
     │
-    ├── training/                # اسکریپت‌های آموزش مدل‌ها
+    ├── training/                # Model training scripts
     │   ├── 05_deterministic_training.py
     │   ├── 06_blocksize_generalization.py
     │   ├── 07_smart_hybrid_model.py
@@ -80,7 +80,7 @@ IOStat/
     │   ├── 11_deterministic_mentor_viz.py
     │   └── 12_mentor_generalization_viz.py
     │
-    └── evaluation/              # اسکریپت‌های ارزیابی و مقایسه مدل‌ها
+    └── evaluation/              # Evaluation and model comparison scripts
         ├── 13_execute_training.py
         ├── 14_evaluation_line_plot.py
         ├── 15_evaluation_smooth_curves.py
@@ -88,184 +88,184 @@ IOStat/
         ├── 17_benchmark_evaluation.py
         ├── 18_evaluation_interpolation.py
         ├── 19_evaluation_max_error.py
-        ├── 20–30_eval_workload_*.py     # ارزیابی ورک‌لودهای مختلف
-        └── evaluation_utils.py          # توابع مشترک ارزیابی
+        ├── 20–30_eval_workload_*.py     # Various workload evaluations
+        └── evaluation_utils.py          # Shared evaluation utilities
 ```
 
 ---
 
-## پیش‌نیازها
+## Prerequisites
 
-- **Python 3.8** یا بالاتر
-- **pip** (مدیر بسته پایتون)
+- **Python 3.8** or higher
+- **pip** (Python package manager)
 
 ---
 
-## نصب و راه‌اندازی
+## Installation
 
-### ۱. کلون کردن مخزن
+### 1. Clone the Repository
 
 ```bash
 git clone https://github.com/erfanteymoyri/IOStat.git
 cd IOStat
 ```
 
-### ۲. ساخت محیط مجازی (پیشنهادی)
+### 2. Create a Virtual Environment (Recommended)
 
 ```bash
 python -m venv venv
-source venv/bin/activate        # لینوکس / مک
-# venv\Scripts\activate         # ویندوز
+source venv/bin/activate        # Linux / macOS
+# venv\Scripts\activate         # Windows
 ```
 
-### ۳. نصب وابستگی‌ها
+### 3. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-همین! پروژه آماده استفاده است. نیازی به build یا کامپایل نیست.
+That's it! The project is ready to use. No build or compilation is required.
 
 ---
 
-## مدل‌های یادگیری ماشین
+## Machine Learning Models
 
-این پروژه از **۴ مدل رگرسیون** استفاده می‌کند که هر کدام یک پایپ‌لاین scikit-learn هستند:
+This project uses **4 regression models**, each implemented as a scikit-learn pipeline:
 
-| مدل | توضیح | کاربرد |
-|-----|--------|--------|
-| **LINEAR** | رگرسیون خطی ساده با نرمال‌سازی | مدل پایه برای مقایسه |
-| **LASSO_POLY** | رگرسیون Lasso با ویژگی‌های چندجمله‌ای (درجه ۳) | گرفتن روابط غیرخطی |
-| **RANDOM_FOREST** | جنگل تصادفی (۱۰۰ درخت) | عملکرد قوی روی داده‌های متنوع |
-| **SVR** | رگرسیون بردار پشتیبان (کرنل RBF) | بهترین عملکرد برای بلاک‌سایزهای کوچک |
+| Model | Description | Use Case |
+|-------|-------------|----------|
+| **LINEAR** | Simple linear regression with normalization | Baseline model for comparison |
+| **LASSO_POLY** | Lasso regression with polynomial features (degree 3) | Capturing non-linear relationships |
+| **RANDOM_FOREST** | Random Forest (100 trees) | Strong performance on diverse data |
+| **SVR** | Support Vector Regression (RBF kernel) | Best performance for small block sizes |
 
-علاوه بر این‌ها، مدل **SMART_HYBRID** هم وجود دارد که بر اساس اندازه بلاک، بین مدل‌ها مسیریابی می‌کند:
-- بلاک‌سایز ≤ ۸ کیلوبایت → **SVR**
-- بلاک‌سایز ۸ تا ۱۶ کیلوبایت → **Random Forest**
-- بلاک‌سایز > ۱۶ کیلوبایت → **Random Forest**
+In addition, there is a **SMART_HYBRID** model that routes between models based on block size:
+- Block size ≤ 8 KB → **SVR**
+- Block size 8 to 16 KB → **Random Forest**
+- Block size > 16 KB → **Random Forest**
 
 ---
 
-## نحوه استفاده
+## Usage
 
-> **نکته:** تمام اسکریپت‌ها باید از **دایرکتوری ریشه پروژه** اجرا شوند تا import مشترک `config.py` و `utils.py` به‌درستی کار کند.
+> **Note:** All scripts should be run from the **project root directory** so that shared imports of `config.py` and `utils.py` work correctly.
 
-### ۱. آموزش مدل‌ها
+### 1. Training Models
 
-#### آموزش و ذخیره مدل‌ها
+#### Train and Save Models
 
-اولین قدم، آموزش مدل‌ها روی داده‌های آموزشی و ذخیره آن‌هاست:
+The first step is to train the models on training data and save them:
 
 ```bash
 python scripts/evaluation/13_execute_training.py data/AllDevices.xlsx --save models.joblib
 ```
 
-این اسکریپت:
-- داده‌های آموزشی را بارگذاری و پیش‌پردازش می‌کند
-- برای هر دستگاه ذخیره‌سازی، ۴ مدل آموزش می‌دهد
-- مدل‌ها را در فایل `models.joblib` ذخیره می‌کند
+This script:
+- Loads and preprocesses the training data
+- Trains 4 models for each storage device
+- Saves the models to the `models.joblib` file
 
-#### آموزش قطعی (Deterministic)
+#### Deterministic Training
 
-آموزش روی یک مجموعه داده و تست روی مجموعه دیگر:
+Train on one dataset and test on another:
 
 ```bash
 python scripts/training/05_deterministic_training.py data/AllDevices.xlsx data/limit100.xlsx
 ```
 
-خروجی شامل نمودارهای میله‌ای مقایسه IOPS واقعی با پیش‌بینی‌شده و فایل اکسل نتایج است.
+The output includes bar charts comparing actual vs. predicted IOPS and an Excel file with results.
 
-#### تعمیم‌پذیری بلاک‌سایز
+#### Block Size Generalization
 
-آموزش بر اساس رژیم بلاک‌سایز (کوچک و بزرگ) و تست روی بلاک‌سایزهای غیراستاندارد:
+Train based on block size regime (small and large) and test on non-standard block sizes:
 
 ```bash
 python scripts/training/06_blocksize_generalization.py data/AllDevices.xlsx
 ```
 
-#### مدل هیبرید هوشمند
+#### Smart Hybrid Model
 
-آموزش مدل ترکیبی که بر اساس بلاک‌سایز بین SVR و Random Forest مسیریابی می‌کند:
+Train the hybrid model that routes between SVR and Random Forest based on block size:
 
 ```bash
 python scripts/training/07_smart_hybrid_model.py data/AllDevices.xlsx
 ```
 
-#### تحلیل تقسیم تصادفی
+#### Random Split Analysis
 
-تحلیل عملکرد مدل‌ها با تقسیم تصادفی داده‌ها:
+Analyze model performance with random data splitting:
 
 ```bash
 python scripts/training/08_random_split_analysis.py data/AllDevices.xlsx
 ```
 
-#### سایر اسکریپت‌های آموزش
+#### Other Training Scripts
 
-| اسکریپت | توضیح |
-|---------|--------|
-| `09_hybrid_regime_random.py` | مدل هیبرید رژیمی با تقسیم تصادفی |
-| `10_iops_bound_focused.py` | آموزش متمرکز بر محدوده IOPS |
-| `11_deterministic_mentor_viz.py` | نمایش بصری سبک منتور (فونت بزرگ) |
-| `12_mentor_generalization_viz.py` | تحلیل تعمیم‌پذیری سبک منتور |
+| Script | Description |
+|--------|-------------|
+| `09_hybrid_regime_random.py` | Hybrid regime model with random splitting |
+| `10_iops_bound_focused.py` | IOPS-bound focused training |
+| `11_deterministic_mentor_viz.py` | Mentor-style visualization (large fonts) |
+| `12_mentor_generalization_viz.py` | Mentor-style generalization analysis |
 
 ---
 
-### ۲. ارزیابی مدل‌ها
+### 2. Evaluating Models
 
-پس از آموزش مدل‌ها، می‌توانید با اسکریپت‌های ارزیابی، عملکرد آن‌ها را بررسی کنید:
+After training the models, you can evaluate their performance using the evaluation scripts:
 
-#### نمودار خطی ساده
+#### Simple Line Plot
 
-مقایسه سریع بهره‌وری IOstat در مقابل مدل ما:
+Quick comparison of IOstat utilization vs. our model:
 
 ```bash
 python scripts/evaluation/14_evaluation_line_plot.py data/evaluation.xlsx
 ```
 
-#### نمودار منحنی هموار
+#### Smooth Curve Plot
 
-منحنی‌های هموارشده با فلش‌های خطا:
+Smoothed curves with error bars:
 
 ```bash
 python scripts/evaluation/15_evaluation_smooth_curves.py data/evaluation.xlsx
 ```
 
-#### نمودار سری زمانی
+#### Time Series Plot
 
-مقایسه بهره‌وری در طول زمان (IOstat در مقابل واقعی در مقابل پیش‌بینی ما):
+Utilization comparison over time (IOstat vs. actual vs. our prediction):
 
 ```bash
 python scripts/evaluation/16_evaluation_time_series.py data/evaluation.xlsx
 ```
 
-#### ارزیابی بنچمارک
+#### Benchmark Evaluation
 
 ```bash
 python scripts/evaluation/17_benchmark_evaluation.py
 ```
 
-#### ارزیابی درون‌یابی
+#### Interpolation Evaluation
 
-تست پیش‌بینی برای بلاک‌سایزهای غیراستاندارد با درون‌یابی خطی:
+Test predictions for non-standard block sizes using linear interpolation:
 
 ```bash
 python scripts/evaluation/18_evaluation_interpolation.py data/evaluation.xlsx
 ```
 
-#### تحلیل حداکثر خطا
+#### Maximum Error Analysis
 
-پیدا کردن نقاط داده با بیشترین خطای پیش‌بینی:
+Find data points with the highest prediction error:
 
 ```bash
 python scripts/evaluation/19_evaluation_max_error.py data/evaluation.xlsx
 ```
 
-#### ارزیابی ورک‌لودهای خاص
+#### Specific Workload Evaluations
 
-هر ورک‌لود دو اسکریپت دارد: `basic` (ارزیابی پایه) و `comparison` (مقایسه مدل‌ها):
+Each workload has two scripts: `basic` (baseline evaluation) and `comparison` (model comparison):
 
-| اسکریپت | ورک‌لود |
-|---------|---------|
+| Script | Workload |
+|--------|----------|
 | `20/21_eval_workload_42_*.py` | Workload 42 |
 | `22/23_eval_fiumail_qd1_*.py` | FIUMail QD1 |
 | `24/25_eval_fiumail_qd2_*.py` | FIUMail QD2 |
@@ -275,154 +275,154 @@ python scripts/evaluation/19_evaluation_max_error.py data/evaluation.xlsx
 
 ---
 
-### ۳. نمودارهای انگیزشی
+### 3. Motivational Charts
 
-این اسکریپت‌ها نمودارهایی تولید می‌کنند که **مشکل iostat** را به‌صورت بصری نشان می‌دهند:
+These scripts generate charts that **visually demonstrate the iostat problem**:
 
 ```bash
-# نمودار میله‌ای: بهره‌وری واقعی در مقابل گزارش iostat
+# Bar chart: Real utilization vs. iostat report
 python scripts/motivational/01_summarized_bar_chart.py
 
-# منحنی‌های انگیزشی
+# Motivational curves
 python scripts/motivational/02_motivational_curves.py
 
-# حداکثر IOPS هر دستگاه
+# Maximum IOPS per device
 python scripts/motivational/03_max_iops_per_device.py
 
-# تحلیل IOPS و پهنای باند
+# IOPS and bandwidth analysis
 python scripts/motivational/04_iops_and_bandwidth.py
 ```
 
 ---
 
-## تنظیمات پروژه
+## Project Configuration
 
-تمام تنظیمات مرکزی در فایل `config.py` قرار دارند:
+All central configuration is located in the `config.py` file:
 
-### هایپرپارامترها
+### Hyperparameters
 
 ```python
 HYPERPARAMS = {
-    "lasso_degree": 3,          # درجه چندجمله‌ای Lasso
-    "lasso_alpha": 0.1,         # ضریب نظم‌دهی Lasso
-    "rf_n_estimators": 100,     # تعداد درخت‌های جنگل تصادفی
-    "rf_max_depth": None,       # حداکثر عمق درخت (بدون محدودیت)
-    "rf_min_samples_leaf": 1,   # حداقل نمونه در هر برگ
+    "lasso_degree": 3,          # Lasso polynomial degree
+    "lasso_alpha": 0.1,         # Lasso regularization coefficient
+    "rf_n_estimators": 100,     # Number of Random Forest trees
+    "rf_max_depth": None,       # Maximum tree depth (unlimited)
+    "rf_min_samples_leaf": 1,   # Minimum samples per leaf
 }
 ```
 
-### بلاک‌سایزهای استاندارد و لنگرگاه‌ها
+### Standard and Anchor Block Sizes
 
 ```python
-STANDARD_BLOCK_SIZES = [2, 4, 8, 16, 32, 64, 128]              # کیلوبایت
+STANDARD_BLOCK_SIZES = [2, 4, 8, 16, 32, 64, 128]              # in KB
 ANCHOR_BLOCK_SIZES = [4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096]
 ```
 
-### رنگ‌بندی مدل‌ها
+### Model Color Scheme
 
-هر مدل رنگ و الگوی مشخصی در نمودارها دارد:
+Each model has a specific color and pattern in charts:
 
-| مدل | رنگ | الگو |
-|-----|------|------|
-| Actual | بنفش `#d896ff` | `///` |
-| LINEAR | نارنجی `#ffcb85` | `xxx` |
-| LASSO_POLY | سبز `#c2ffb4` | `+++` |
-| RANDOM_FOREST | آبی `#99ccff` | `\\\\` |
-| SVR | صورتی `#ffd4e5` | `---` |
-| SMART_HYBRID | طلایی `#ffd700` | `**` |
-
----
-
-## ویژگی‌های ورودی مدل
-
-مدل‌ها فقط از **۲ ویژگی** استفاده می‌کنند:
-
-| ویژگی | توضیح | محدوده |
-|-------|--------|--------|
-| `read_percent` | درصد عملیات خواندن | ۰ تا ۱۰۰ |
-| `block_size_kb` | اندازه بلاک به کیلوبایت | ۲ تا ۴۰۹۶ |
-
-### درون‌یابی بلاک‌سایز
-
-برای بلاک‌سایزهایی که مستقیماً در داده‌های آموزشی نیستند (مثلاً ۱۲ کیلوبایت)، سیستم به‌صورت خودکار **درون‌یابی خطی** بین نزدیک‌ترین بلاک‌سایزهای لنگرگاه انجام می‌دهد.
+| Model | Color | Pattern |
+|-------|-------|---------|
+| Actual | Purple `#d896ff` | `///` |
+| LINEAR | Orange `#ffcb85` | `xxx` |
+| LASSO_POLY | Green `#c2ffb4` | `+++` |
+| RANDOM_FOREST | Blue `#99ccff` | `\\\\` |
+| SVR | Pink `#ffd4e5` | `---` |
+| SMART_HYBRID | Gold `#ffd700` | `**` |
 
 ---
 
-## خروجی‌ها
+## Model Input Features
 
-اسکریپت‌ها خروجی‌های زیر را تولید می‌کنند:
+The models use only **2 features**:
 
-| نوع | فرمت | توضیح |
-|-----|-------|--------|
-| نمودارها | PDF | نمودارهای مقایسه‌ای و ارزیابی |
-| نتایج | Excel (`.xlsx`) | جداول عددی نتایج پیش‌بینی |
-| مدل‌ها | joblib (`.joblib`) | مدل‌های آموزش‌دیده ذخیره‌شده |
+| Feature | Description | Range |
+|---------|-------------|-------|
+| `read_percent` | Percentage of read operations | 0 to 100 |
+| `block_size_kb` | Block size in kilobytes | 2 to 4096 |
 
----
+### Block Size Interpolation
 
-## وابستگی‌ها
-
-| بسته | نسخه | کاربرد |
-|------|-------|--------|
-| numpy | ≥ 1.21.0 | محاسبات عددی |
-| pandas | ≥ 1.3.0 | مدیریت داده‌ها |
-| matplotlib | ≥ 3.4.0 | رسم نمودار |
-| seaborn | ≥ 0.11.0 | نمودارهای آماری |
-| scipy | ≥ 1.7.0 | درون‌یابی منحنی |
-| scikit-learn | ≥ 1.0.0 | مدل‌های یادگیری ماشین |
-| joblib | ≥ 1.1.0 | ذخیره و بارگذاری مدل‌ها |
-| openpyxl | ≥ 3.0.0 | خواندن و نوشتن فایل اکسل |
+For block sizes that are not directly present in the training data (e.g., 12 KB), the system automatically performs **linear interpolation** between the nearest anchor block sizes.
 
 ---
 
-## توابع کلیدی
+## Outputs
 
-### بارگذاری و آماده‌سازی داده (`utils.py`)
+The scripts produce the following outputs:
+
+| Type | Format | Description |
+|------|--------|-------------|
+| Charts | PDF | Comparison and evaluation charts |
+| Results | Excel (`.xlsx`) | Numerical prediction result tables |
+| Models | joblib (`.joblib`) | Saved trained models |
+
+---
+
+## Dependencies
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| numpy | ≥ 1.21.0 | Numerical computations |
+| pandas | ≥ 1.3.0 | Data management |
+| matplotlib | ≥ 3.4.0 | Plotting |
+| seaborn | ≥ 0.11.0 | Statistical charts |
+| scipy | ≥ 1.7.0 | Curve interpolation |
+| scikit-learn | ≥ 1.0.0 | Machine learning models |
+| joblib | ≥ 1.1.0 | Model saving and loading |
+| openpyxl | ≥ 3.0.0 | Reading and writing Excel files |
+
+---
+
+## Key Functions
+
+### Data Loading and Preparation (`utils.py`)
 
 ```python
 from utils import load_data, read_and_prep_data, engineer_features
 
-# بارگذاری ساده فایل اکسل یا CSV
+# Simple loading of an Excel or CSV file
 df = load_data("data/AllDevices.xlsx")
 
-# بارگذاری و پیش‌پردازش کامل برای آموزش
+# Full loading and preprocessing for training
 train_df = read_and_prep_data("data/AllDevices.xlsx", is_test_file=False)
 train_df = engineer_features(train_df)
 
-# بارگذاری و پیش‌پردازش کامل برای تست
+# Full loading and preprocessing for testing
 test_df = read_and_prep_data("data/limit100.xlsx", is_test_file=True)
 test_df = engineer_features(test_df)
 ```
 
-### ساخت و آموزش مدل‌ها
+### Building and Training Models
 
 ```python
 from utils import get_base_pipelines
 from config import FEATURES
 
-# ساخت ۴ پایپ‌لاین مدل
+# Build 4 model pipelines
 pipelines = get_base_pipelines()
 
-# آموزش هر مدل روی داده‌های یک دستگاه
+# Train each model on a single device's data
 for name, pipeline in pipelines.items():
     pipeline.fit(X_train[FEATURES], y_train)
     predictions = pipeline.predict(X_test[FEATURES])
     print(f"{name}: {predictions[:5]}")
 ```
 
-### پیش‌بینی با درون‌یابی
+### Prediction with Interpolation
 
 ```python
 from utils import predict_with_interpolation
 import numpy as np
 
-# پیش‌بینی برای بلاک‌سایزهای غیراستاندارد
+# Predict for non-standard block sizes
 X_new = np.array([[50, 12], [100, 24]])  # [read_percent, block_size_kb]
 predictions = predict_with_interpolation(trained_model, X_new)
 ```
 
 ---
 
-## مجوز
+## License
 
-این پروژه برای اهداف تحقیقاتی و آکادمیک توسعه داده شده است.
+This project was developed for research and academic purposes.
