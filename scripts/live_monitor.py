@@ -272,20 +272,20 @@ def select_device_interactive(devices):
             idx = int(choice) - 1
             if 0 <= idx < len(dev_list):
                 return dev_list[idx]
+            print(f"  Please enter a number between 1 and {len(dev_list)}.")
         except (ValueError, EOFError):
-            pass
+            print(f"  Please enter a number between 1 and {len(dev_list)}.")
         except KeyboardInterrupt:
             print("\nAborted.")
             sys.exit(0)
-        print(f"  Please enter a number between 1 and {len(dev_list)}.")
 
 
 def select_model_device_interactive(models):
     """Let user manually pick a model device when auto-match fails."""
     keys = sorted(models.keys())
     print("\nAvailable model devices:")
-    for i, k in enumerate(keys, 1):
-        print(f"  [{i}] {k}")
+    for i, device_key in enumerate(keys, 1):
+        print(f"  [{i}] {device_key}")
 
     while True:
         try:
