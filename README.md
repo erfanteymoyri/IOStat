@@ -64,6 +64,8 @@ IOStat/
 ├── README.md                    # This file
 │
 └── scripts/
+    ├── live_monitor.py              # Live iostat monitoring with ML predictions
+    │
     ├── motivational/            # Motivational chart scripts
     │   ├── 01_summarized_bar_chart.py
     │   ├── 02_motivational_curves.py
@@ -275,7 +277,57 @@ Each workload has two scripts: `basic` (baseline evaluation) and `comparison` (m
 
 ---
 
-### 3. Motivational Charts
+### 3. Live Monitoring (Real-Time Prediction)
+
+The live monitor script uses `iostat` to read real-time device statistics and compares the standard `iostat` utilization report with our ML-predicted utilization. This makes the project **executable on any Linux system** with trained models.
+
+#### Prerequisites
+
+- `iostat` must be installed (`sudo apt install sysstat` on Debian/Ubuntu)
+- Trained models saved as a `.joblib` file
+
+#### Step 1: Train models on your device data
+
+```bash
+python scripts/evaluation/13_execute_training.py data/AllDevices.xlsx --save models.joblib
+```
+
+#### Step 2: Run the live monitor
+
+```bash
+# Basic usage (5-second interval, LASSO_POLY model)
+python scripts/live_monitor.py models.joblib
+
+# Custom interval and model
+python scripts/live_monitor.py models.joblib --interval 3 --model RANDOM_FOREST
+
+# Collect exactly 20 samples
+python scripts/live_monitor.py models.joblib --count 20
+```
+
+The script will:
+1. Run `iostat -txm -d` to discover available storage devices
+2. Ask you to select which device to monitor
+3. Automatically match the device to the trained model
+4. Display a live comparison table showing IOstat utilization vs. our predicted utilization
+5. Print summary statistics when you press `Ctrl+C`
+
+**Example output:**
+
+```
+======================================================================
+  Live Monitor | Device: sda | Model: LASSO_POLY | Interval: 5s
+======================================================================
+Sample   Time        IOPS  Read%   BS(kB)  IOstat%   Ours%     Diff
+----------------------------------------------------------------------
+1        14:23:05    150.0  66.7%    12.0     82.0%   21.3%   +60.7%
+2        14:23:10    200.0  50.0%    16.0     93.0%   35.1%   +57.9%
+3        14:23:15     80.0 100.0%     4.0     45.0%   12.8%   +32.2%
+```
+
+---
+
+### 4. Motivational Charts
 
 These scripts generate charts that **visually demonstrate the iostat problem**:
 
